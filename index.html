@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Course Deadline Board</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23e07a5f'/%3E%3Crect x='22' y='30' width='24' height='40' rx='4' fill='%23fff'/%3E%3Crect x='54' y='30' width='24' height='24' rx='4' fill='%23fff'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#171310; --surface:#211b16; --surface2:#2b231d; --border:#3b3129;
+    --text:#f3ece2; --muted:#b3a89a; --accent:#e07a5f; --accent2:#2a9d8f;
+    --ok:#7fb069; --soon:#e9c46a; --late:#e63946; --chip:#333;
+    --radius:10px; font-size:16px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.45}
+  button{font:inherit;cursor:pointer}
+  input,select{font:inherit;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:.35em .5em}
+  input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  header{padding:.8rem 1rem;border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
+  header h1{font-size:1.1rem;margin:0 1rem 0 0;letter-spacing:.02em}
+  header .spacer{flex:1}
+  .btn{background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:.35em .7em}
+  .btn:hover{border-color:var(--accent)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#1c110c;font-weight:600}
+  .btn.danger{color:var(--late)}
+  .termb{flex-basis:100%;display:flex;align-items:center;gap:.5rem;font-size:.8rem;color:var(--muted)}
+  .termb .track{flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden}
+  .termb .fill{height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));width:0%}
+  main{padding:1rem}
+  .cols{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(280px,1fr);gap:1rem;overflow-x:auto;padding-bottom:1rem}
+  .col{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:.7rem;min-height:120px}
+  .col header2,.col .colhead{display:flex;align-items:center;gap:.45rem;margin-bottom:.6rem}
+  .dot{width:.7em;height:.7em;border-radius:50%;display:inline-block;flex:none}
+  .colname{flex:1;font-weight:600;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .colmeta{font-size:.75rem;color:var(--muted);margin:-.4rem 0 .5rem .95rem}
+  .cards{display:flex;flex-direction:column;gap:.55rem}
+  .card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:.55rem .6rem}
+  .card .t{font-weight:600;display:flex;gap:.5rem;align-items:baseline}
+  .card .t .title{flex:1;word-break:break-word}
+  .card .meta{display:flex;flex-wrap:wrap;gap:.3rem;margin:.35rem 0}
+  .chip{font-size:.7rem;padding:.1em .5em;border-radius:99px;background:var(--chip);border:1px solid var(--border);color:var(--muted)}
+  .chip.ok{color:var(--ok)}
+  .chip.soon{color:var(--soon)}
+  .chip.late{color:var(--late)}
+  .chip.lateflag,.chip.grace{color:var(--late)}
+  .chip.grace{color:var(--soon);opacity:1}
+  .chip.wt{color:var(--text)}
+  .chip.donechip{color:var(--ok)}
+  .card .bar{height:5px;background:#00000055;border-radius:3px;overflow:hidden;margin:.4rem 0 .2rem}
+  .card .bar .fill{height:100%;border-radius:3px}
+  .fill.ok,.chipc-ok{background:var(--ok)}
+  .fill.soon,.chipc-soon{background:var(--soon)}
+  .fill.late,.chipc-late{background:var(--late)}
+  .card .acts{display:flex;gap:.35rem;margin-top:.35rem}
+  .card .acts button{font-size:.72rem;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:.15em .55em}
+  .card .acts button:hover{color:var(--text);border-color:var(--accent)}
+  .status-pill{font-size:.7rem;border-radius:99px;padding:.1em .55em;border:1px solid var(--border);cursor:pointer;background:var(--chip)}
+  .status-todo{color:var(--muted)}
+  .status-progress{color:var(--soon)}
+  .status-submitted{color:var(--accent2)}
+  .status-graded{color:var(--ok)}
+  .addcard{width:100%;background:transparent;border:1px dashed var(--border);color:var(--muted);border-radius:8px;padding:.4em;margin-top:.55rem}
+  .addcard:hover{color:var(--text);border-color:var(--accent)}
+  .empty{color:var(--muted);padding:2rem 0;text-align:center}
+  dialog{background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:0;max-width:520px;width:92vw}
+  dialog::backdrop{background:#000a}
+  dialog .dlg{padding:1rem}
+  dialog h2{margin:0 0 .7rem;font-size:1rem}
+  dialog form[method=dialog]{display:inline;margin-left:.5rem}
+  .frow{display:grid;grid-template-columns:130px 1fr;gap:.4rem .6rem;align-items:center;margin-bottom:.55rem}
+  .frow label{color:var(--muted);font-size:.85rem}
+  .actions{display:flex;justify-content:flex-end;gap:.4rem;margin-top:.7rem}
+  .frow.inline{grid-template-columns:130px auto auto}
+  .hidden{display:none}
+  .focuslist{max-width:860px}
+  .focuslist h2{font-size:1rem;margin:1rem 0 .4rem;color:var(--muted)}
+  .frowline{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:.5rem .6rem;margin-bottom:.35rem}
+  .frowline .d{min-width:11ch;font-variant-numeric:tabular-nums}
+  .frowline .title{flex:1;font-weight:600}
+  .frowline .course{font-size:.75rem;color:var(--muted)}
+  section.checklist{max-width:860px;margin-top:1.4rem}
+  section.checklist summary{cursor:pointer;color:var(--muted)}
+  .ckitem{display:flex;gap:.5rem;align-items:center;padding:.3rem 0;border-bottom:1px dashed var(--border)}
+  .ckitem.done label{text-decoration:line-through;color:var(--muted)}
+  .ckitem label{flex:1}
+  .ckitem .course{font-size:.7rem;color:var(--muted)}
+  footer{padding:1rem;color:var(--muted);font-size:.78rem}
+  .progressmini{height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;max-width:860px;margin:.35rem 0 .5rem}
+  .progressmini span{display:block;height:100%;background:var(--accent2)}
+  @media (max-width:600px){ .frow{grid-template-columns:1fr} .frow.inline{grid-template-columns:1fr auto} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Course Deadline Board</h1>
+  <button class="btn primary" data-act="toggle-view" id="viewBtn">Next-2-weeks focus</button>
+  <button class="btn" data-act="summary">Summary (.md)</button>
+  <button class="btn" data-act="backup">Backup (.json)</button>
+  <button class="btn" data-act="import">Import backup</button>
+  <span class="spacer"></span>
+  <details>
+    <summary class="btn">Term &amp; data</summary>
+    <div style="position:absolute;right:1rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:.8rem;z-index:5;max-width:280px">
+      <div class="frow"><label for="termStart">Term start</label><input type="date" id="termStart"></div>
+      <div class="frow"><label for="termEnd">Term end</label><input type="date" id="termEnd"></div>
+      <button class="btn danger" data-act="wipe">Reset all data</button>
+    </div>
+  </details>
+  <input type="file" id="importFile" accept="application/json,.json" class="hidden">
+  <div class="termb">
+    <span id="termLabel">No term dates set</span>
+    <div class="track" id="termTrack" style="display:none"><div class="fill" id="termFill"></div></div>
+  </div>
+</header>
+
+<main>
+  <div id="boardView">
+    <div class="cols" id="board"></div>
+    <button class="btn" data-act="add-course" style="margin-top:.4rem">+ Add course</button>
+  </div>
+  <div id="focusView" class="hidden">
+    <div class="focuslist" id="focusList"></div>
+  </div>
+
+  <section class="checklist">
+    <details open>
+      <summary>Syllabus touch-up checklist (<span id="ckCount">0/0</span>)</summary>
+      <div class="progressmini"><span id="ckFill" style="width:0%"></span></div>
+      <div id="ckList"></div>
+      <form id="ckForm" style="display:flex;gap:.4rem;margin-top:.6rem;flex-wrap:wrap">
+        <input type="text" id="ckText" placeholder="Add checklist item (e.g. confirm final exam date)" style="flex:1;min-width:200px" aria-label="New checklist item">
+        <select id="ckCourse" aria-label="Course for checklist item" style="max-width:220px"></select>
+        <button class="btn" type="submit">Add</button>
+      </form>
+    </details>
+  </section>
+</main>
+
+<dialog id="dlg">
+  <form method="dialog" style="float:right;margin:.5rem .5rem 0 0"><button class="btn" value="cancel">x</button></form>
+  <div class="dlg">
+    <h2 id="dlgTitle">Assignment</h2>
+    <form id="af" novalidate>
+      <input type="hidden" id="aId">
+      <div class="frow"><label for="aCourse">Course</label><select id="aCourse"></select></div>
+      <div class="frow"><label for="aTitle">Title</label><input type="text" id="aTitle" required maxlength="140"></div>
+      <div class="frow"><label for="aWeight">Weight (% of course grade)</label><input type="number" id="aWeight" min="0" max="100" step="0.5" value="0"></div>
+      <div class="frow"><label for="aDue">Due (date &amp; time)</label><input type="datetime-local" id="aDue" required></div>
+      <div class="frow"><label for="aStatus">Status</label>
+        <select id="aStatus">
+          <option value="todo">Not started</option>
+          <option value="progress">In progress</option>
+          <option value="submitted">Submitted</option>
+          <option value="graded">Graded</option>
+        </select>
+      </div>
+      <div class="frow" id="rowSubmitted"><label for="aSubmitted">Submitted at (records lateness)</label><input type="datetime-local" id="aSubmitted"></div>
+      <div class="frow" id="rowGrade"><label for="aGrade">Score earned (%)</label><input type="number" id="aGrade" min="0" max="100" step="0.1"></div>
+      <div class="frow inline"><label for="aGrace">Grace period / extension</label><input type="checkbox" id="aGrace"> <input type="number" id="aGraceHours" min="1" max="336" step="1" value="48" style="width:6ch"> <span style="color:var(--muted);font-size:.8rem">hours</span></div>
+      <div class="actions">
+        <button type="button" class="btn" value="cancel" data-close>Cancel</button>
+        <button type="submit" class="btn primary" id="dlgSave">Save</button>
+      </div>
+      <div id="formErr" style="color:var(--late);font-size:.85rem"></div>
+    </form>
+  </div>
+</dialog>
+
+<footer>
+  Local-first: everything stays in this browser's localStorage. No accounts, no network calls.
+  Built by Asdale Dynamics, LLC.
+</footer>
+
+<script>
+"use strict";
+/* ===CORE-START=== */
+const DAY = 864e5, HOUR = 36e5, MIN = 6e4;
+const DONE = ["submitted", "graded"];
+
+function effDue(a){
+  const d = Date.parse(a.due);
+  if (Number.isNaN(d)) return NaN;
+  return a.grace ? d + (a.graceHours > 0 ? a.graceHours : 48) * HOUR : d;
+}
+
+function fmtCountdown(dueIso, nowMs){
+  const due = Date.parse(dueIso);
+  const ms = due - nowMs;
+  const abs = Math.abs(ms);
+  const d = Math.floor(abs / DAY), h = Math.floor((abs % DAY) / HOUR), m = Math.floor((abs % HOUR) / MIN);
+  let text;
+  if (abs < 1 * HOUR) text = m + "m";
+  else if (abs < 1 * DAY) text = h + "h " + m + "m";
+  else text = d + "d " + h + "h";
+  const urgency = ms < 0 ? "late" : ms <= 48 * HOUR ? "soon" : "ok";
+  return { ms, text: ms < 0 ? text + " late" : text, urgency };
+}
+
+function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+
+function dueBarFrac(startMs, dueMs, nowMs){
+  if (dueMs <= startMs) return nowMs >= dueMs ? 1 : 0;
+  return clamp01((nowMs - startMs) / (dueMs - startMs));
+}
+
+function sumWeights(items){
+  return items.reduce((s, i) => s + (i.weight > 0 ? i.weight : 0), 0);
+}
+
+function weightedScore(entries){
+  let w = 0, p = 0;
+  for (const e of entries){
+    if (!(e.weight > 0) || e.pct == null || Number.isNaN(e.pct)) continue;
+    w += e.weight; p += e.weight * e.pct;
+  }
+  return w > 0 ? p / w : null;
+}
+
+function isLate(a, nowMs){
+  if (a.status === "graded") return false;
+  const ed = effDue(a);
+  if (a.status === "submitted") return Date.parse(a.submittedAt || "") > ed;
+  return nowMs > ed;
+}
+
+function focusWindow(items, nowMs, days){
+  const end = nowMs + (days == null ? 14 : days) * DAY;
+  return items
+    .filter(a => !DONE.includes(a.status) && effDue(a) <= end)
+    .sort((x, y) => effDue(x) - effDue(y));
+}
+
+const CORE = { DAY, HOUR, MIN, DONE, effDue, fmtCountdown, clamp01, dueBarFrac, sumWeights, weightedScore, isLate, focusWindow };
+/* ===CORE-END=== */
+
+const KEY = "cdl-board-v1";
+const PALETTE = ["#e07a5f", "#3d8bfd", "#2a9d8f", "#e9c46a", "#9b5de5", "#f28482", "#8ab17c", "#b5838d"];
+const STATUS_LABEL = { todo: "not started", progress: "in progress", graded: "graded" };
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const uid = () => Math.random().toString(36).slice(2, 10);
+
+let state = blank();
+let view = "board";
+
+function blank(){
+  return { version: 1, termStart: "", termEnd: "", courses: [], assignments: [], checklist: defaultChecklist() };
+}
+function defaultChecklist(){
+  return [
+    ["Add every graded item with its weight", "general"],
+    ["Confirm each due date against the syllabus", "general"],
+    ["Check the late work / penalty policy", "general"],
+    ["Note any grace or extension rules", "general"],
+    ["Confirm final exam date, time, and weight", "general"]
+  ].map(([text, courseId]) => ({ id: uid(), courseId, text, done: false }));
+}
+
+function load(){
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) {
+      const s = JSON.parse(raw);
+      if (s && Array.isArray(s.courses) && Array.isArray(s.assignments)) state = s;
+    }
+  } catch (e) { console.warn("Could not load saved data:", e); }
+  refreshChecklistCourseNames();
+}
+function save(){
+  try { localStorage.setItem(KEY, JSON.stringify(state)); }
+  catch (e) { console.warn("Could not save:", e); }
+}
+
+function toLocalIso(ms){
+  const d = new Date(ms);
+  const p = n => String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + "T" + p(d.getHours()) + ":" + p(d.getMinutes());
+}
+function fmtDate(iso){
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+function course(id){ return state.courses.find(c => c.id === id); }
+function courseName(id){ return id === "general" ? "General" : (course(id) ? course(id).name : ""); }
+
+function refreshChecklistCourseNames(){
+  const sel = document.getElementById("ckCourse");
+  const cur = sel.value;
+  sel.innerHTML = '<option value="general">General</option>' +
+    state.courses.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
+  if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
+}
+
+function render(){
+  renderTermBar();
+  document.getElementById("boardView").classList.toggle("hidden", view !== "board");
+  document.getElementById("focusView").classList.toggle("hidden", view !== "focus");
+  document.getElementById("viewBtn").textContent = view === "board" ? "Next-2-weeks focus" : "Back to board";
+  document.getElementById("termStart").value = state.termStart;
+  document.getElementById("termEnd").value = state.termEnd;
+  refreshChecklistCourseNames();
+  renderBoard();
+  renderFocus();
+  renderChecklist();
+}
+
+function renderTermBar(){
+  const label = document.getElementById("termLabel");
+  const track = document.getElementById("termTrack"), fill = document.getElementById("termFill");
+  if (!state.termStart || !state.termEnd) {
+    track.style.display = "none";
+    label.textContent = "No term dates set — add them under “Term & data” for due-date bars";
+    return;
+  }
+  const s = Date.parse(state.termStart + "T00:00"), e = Date.parse(state.termEnd + "T23:59");
+  track.style.display = "";
+  label.textContent = "Term: " + new Date(s).toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " to " +
+    new Date(e).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  fill.style.width = (CORE.clamp01((Date.now() - s) / (e - s)) * 100).toFixed(1) + "%";
+}
+
+function cardHtml(a, nowMs){
+  const cd = CORE.fmtCountdown(a.due, nowMs);
+  const late = CORE.isLate(a, nowMs);
+  const done = CORE.DONE.includes(a.status);
+  const startMs = state.termStart ? Date.parse(state.termStart + "T00:00") : Date.parse(a.due) - 28 * CORE.DAY;
+  const frac = CORE.clamp01((nowMs - startMs) / Math.max(1, Date.parse(a.due) - startMs)) * 100;
+  const urgency = done ? "ok" : CORE.effDue(a) < nowMs ? "late" : cd.urgency;
+  const timeChip = done ? `<span class="chip donechip">done</span>`
+    : late ? `<span class="chip lateflag">late</span><span class="chip late">${esc(cd.text)}</span>`
+    : a.grace ? `<span class="chip grace">grace +${a.graceHours || 48}h</span><span class="chip">${esc(cd.text)}</span>`
+    : `<span class="chip ${cd.urgency}">${esc(cd.text)}</span>`;
+  return `<div class="card" data-id="${a.id}">
+    <div class="t"><span class="title">${esc(a.title)}</span></div>
+    <div class="meta">
+      <span class="chip wt">${a.weight || 0}%</span>
+      <span class="chip">${esc(fmtDate(a.due))}</span>
+      ${timeChip}
+    </div>
+    <div class="bar" title="${frac.toFixed(0)}% of the window to this deadline has elapsed"><span class="fill ${urgency}" style="width:${frac.toFixed(1)}%"></span></div>
+    <div class="acts">
+      <button class="status-pill status-${a.status}" data-act="cycle-status">status: ${esc(STATUS_LABEL[a.status] || a.status)}</button>
+      <button data-act="edit">edit</button>
+      <button data-act="del">delete</button>
+    </div>
+  </div>`;
+}
+
+function renderBoard(){
+  const nowMs = Date.now();
+  const board = document.getElementById("board");
+  if (!state.courses.length){
+    board.innerHTML = `<div class="empty" style="grid-column:1/-1">
+      <p>No courses yet.</p>
+      <p><button class="btn primary" data-act="add-course">+ Add course</button>
+      <button class="btn" data-act="sample">Load sample semester</button></p></div>`;
+    return;
+  }
+  board.innerHTML = state.courses.map(c => {
+    const items = state.assignments.filter(a => a.courseId === c.id);
+    const wSum = CORE.sumWeights(items).toFixed(0);
+    return `<div class="col" style="border-top:3px solid ${esc(c.color)}">
+      <div class="colhead">
+        <span class="dot" style="background:${esc(c.color)}"></span>
+        <span class="colname" data-act="rename-course" data-id="${c.id}" title="Click to rename">${esc(c.name)}</span>
+        <button class="btn" data-act="del-course" data-id="${c.id}" title="Delete course" aria-label="Delete course ${esc(c.name)}">x</button>
+      </div>
+      <div class="colmeta">${items.length} item${items.length === 1 ? "" : "s"} · ${wSum}% of course grade logged</div>
+      <div class="cards">${items.map(a => cardHtml(a, nowMs)).join("")}</div>
+      <button class="addcard" data-act="add-assignment" data-id="${c.id}">+ Add assignment</button>
+    </div>`;
+  }).join("");
+}
+
+function renderFocus(){
+  const nowMs = Date.now();
+  const items = CORE.focusWindow(state.assignments, nowMs, 14);
+  const buckets = [
+    ["Overdue — act now", a => CORE.effDue(a) < nowMs],
+    ["Next 7 days", a => CORE.effDue(a) >= nowMs && CORE.effDue(a) <= nowMs + 7 * CORE.DAY],
+    ["Days 8 to 14", a => CORE.effDue(a) > nowMs + 7 * CORE.DAY]
+  ];
+  let html = "";
+  if (!state.assignments.length) html = `<p class="empty">Nothing yet — add courses on the board.</p>`;
+  for (const [label, pred] of buckets){
+    const group = items.filter(pred);
+    if (!group.length) continue;
+    html += `<h2>${label} (${group.length})</h2>` + group.map(a => {
+      const cd = CORE.fmtCountdown(a.due, nowMs);
+      const late = CORE.effDue(a) < nowMs && !CORE.DONE.includes(a.status);
+      return `<div class="frowline">
+        <span class="d"><strong>${late ? '<span class="chip late">' : '<span class="chip ' + cd.urgency + '">'}${esc(cd.text)}</span></strong>
+        <span class="course">${esc(fmtDate(a.due))}</span></span>
+        <span class="title">${esc(a.title)}</span>
+        <span class="course">${esc(courseName(a.courseId))}</span>
+        ${(a.weight || 0) ? `<span class="chip wt">${a.weight}%</span>` : ""}
+        ${late ? `<span class="chip lateflag">late</span>` : ""}
+        ${a.grace ? `<span class="chip grace">grace +${a.graceHours || 48}h</span>` : ""}
+        <span class="course">${esc(STATUS_LABEL[a.status] || a.status)}</span>
+      </div>`;
+    }).join("");
+  }
+  if (!html) html = `<h2>All caught up</h2><p class="empty">Nothing due in the next two weeks. Check the board for the long view.</p>`;
+  document.getElementById("focusList").innerHTML = html;
+}
+
+function renderChecklist(){
+  const list = document.getElementById("ckList");
+  list.innerHTML = state.checklist.map(it => `<div class="ckitem ${it.done ? "done" : ""}">
+      <input type="checkbox" id="ck-${it.id}" data-ck="${it.id}" ${it.done ? "checked" : ""}>
+      <label for="ck-${it.id}">${esc(it.text)}</label>
+      <span class="course">${esc(courseName(it.courseId))}</span>
+      <button class="btn" data-act="ck-del" data-id="${it.id}" aria-label="Remove checklist item">x</button>
+    </div>`).join("") || `<p class="empty">Checklist is empty - add items below.</p>`;
+  const done = state.checklist.filter(i => i.done).length;
+  document.getElementById("ckCount").textContent = done + "/" + state.checklist.length;
+  document.getElementById("ckFill").style.width = (state.checklist.length ? done / state.checklist.length * 100 : 0) + "%";
+}
+
+function openDialog(id, courseId){
+  const dlg = document.getElementById("dlg");
+  document.getElementById("formErr").textContent = "";
+  const sel = document.getElementById("aCourse");
+  sel.innerHTML = state.courses.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
+  const a = id ? state.assignments.find(x => x.id === id) : null;
+  document.getElementById("dlgTitle").textContent = a ? "Edit assignment" : "New assignment";
+  document.getElementById("aId").value = a ? a.id : "";
+  sel.value = a ? a.courseId : (courseId || state.courses[0] && state.courses[0].id || "");
+  document.getElementById("aTitle").value = a ? a.title : "";
+  document.getElementById("aWeight").value = a ? a.weight : 0;
+  document.getElementById("aDue").value = a ? a.due : toLocalIso(Date.now() + 7 * CORE.DAY).slice(0, 16);
+  document.getElementById("aStatus").value = a ? a.status : "todo";
+  document.getElementById("aSubmitted").value = a && a.submittedAt ? a.submittedAt.slice(0, 16) : "";
+  document.getElementById("aGrade").value = a && a.gradePct != null ? a.gradePct : "";
+  document.getElementById("aGrace").checked = a ? !!a.grace : false;
+  document.getElementById("aGraceHours").value = a && a.graceHours ? a.graceHours : 48;
+  syncDialogRows();
+  dlg.showModal();
+}
+function syncDialogRows(){
+  const st = document.getElementById("aStatus").value;
+  document.getElementById("rowSubmitted").classList.toggle("hidden", st !== "submitted");
+  document.getElementById("rowGrade").classList.toggle("hidden", st !== "graded");
+  document.getElementById("aGraceHours").parentElement.style.opacity = document.getElementById("aGrace").checked ? 1 : .4;
+}
+document.getElementById("aStatus").addEventListener("change", syncDialogRows);
+document.getElementById("aGrace").addEventListener("change", e => { document.getElementById("aGraceHours").parentElement.style.opacity = e.target.checked ? 1 : .4; });
+document.getElementById("dlg").querySelector("button[data-close]").addEventListener("click", () => document.getElementById("dlg").close());
+document.getElementById("af").addEventListener("submit", e => {
+  e.preventDefault();
+  const id = document.getElementById("aId").value;
+  const title = document.getElementById("aTitle").value.trim();
+  const due = document.getElementById("aDue").value;
+  const w = parseFloat(document.getElementById("aWeight").value) || 0;
+  const err = document.getElementById("formErr");
+  if (!title) { err.textContent = "Give the assignment a title."; return; }
+  if (!due || Number.isNaN(Date.parse(due))) { err.textContent = "Pick a valid due date and time."; return; }
+  if (w < 0 || w > 100) { err.textContent = "Weight must be between 0 and 100."; return; }
+  const status = document.getElementById("aStatus").value;
+  const grace = document.getElementById("aGrace").checked;
+  const graceHours = grace ? (parseFloat(document.getElementById("aGraceHours").value) || 48) : 48;
+  const submittedVal = document.getElementById("aSubmitted").value;
+  const gradeVal = parseFloat(document.getElementById("aGrade").value);
+  const base = id ? state.assignments.find(x => x.id === id) : {};
+  const a = {
+    id: id || uid(),
+    courseId: document.getElementById("aCourse").value,
+    title, weight: w, due, status, grace, graceHours,
+    submittedAt: status === "submitted" ? (submittedVal || toLocalIso(Date.now())) : (base.submittedAt || null),
+    gradePct: status === "graded" ? (Number.isFinite(gradeVal) ? gradeVal : null) : (base.gradePct ?? null)
+  };
+  if (id) { Object.assign(base, a); } else { state.assignments.push(a); }
+  save(); render(); document.getElementById("dlg").close();
+});
+
+function loadSample(){
+  if (state.courses.length && !confirm("Sample data will be added to your current board. Continue?")) return;
+  const now = Date.now();
+  const c1 = { id: uid(), name: "Intro to Psychology", color: PALETTE[1] };
+  const c2 = { id: uid(), name: "Statistics", color: PALETTE[3] };
+  const c3 = { id: uid(), name: "Clinical Prep Lab", color: PALETTE[2] };
+  const at = (offset) => toLocalIso(now + offset);
+  state.courses.push(c1, c2, c3);
+  const a = (courseId, title, weight, due, status, extra) => Object.assign(
+    { id: uid(), courseId, title, weight, due, status, grace: false, graceHours: 48, submittedAt: null, gradePct: null }, extra || {});
+  state.assignments.push(
+    a(c1.id, "Essay: nature vs. nurture", 20, at(2 * CORE.DAY), "progress"),
+    a(c1.id, "Mood log summary", 5, at(9 * CORE.DAY), "todo"),
+    a(c1.id, "Midterm reflection", 10, at(-2 * CORE.DAY), "submitted", { submittedAt: at(-1.5 * CORE.DAY) }),
+    a(c2.id, "Problem set 3", 8, at(-8 * CORE.HOUR), "todo"),
+    a(c2.id, "Quiz chapters 4 and 5", 7, at(15 * CORE.DAY), "todo", { grace: true, graceHours: 24 }),
+    a(c2.id, "Data project proposal", 15, at(19 * CORE.DAY), "todo"),
+    a(c3.id, "Simulation pre-work", 10, at(3 * CORE.DAY), "progress"),
+    a(c3.id, "Skills check-off sign-up", 10, at(6 * CORE.DAY), "submitted", { submittedAt: at(7 * CORE.DAY) }),
+    a(c3.id, "Shadowing journal", 12, at(13 * CORE.DAY), "todo")
+  );
+  save(); render();
+}
+
+function markSubmitted(a){ a.submittedAt = toLocalIso(Date.now()); a.status = "submitted"; save(); render(); }
+
+document.addEventListener("click", e => {
+  const btn = e.target.closest("[data-act]");
+  const head = e.target.closest(".colname[data-act='rename-course']");
+  if (e.target.closest("details summary.btn") || e.target.closest("details > summary")) return;
+  if (!btn && !head) return;
+  handleAct(btn || head);
+});
+
+function handleAct(btn){
+  const act = btn.dataset.act, id = btn.dataset.id;
+  const card = btn.closest(".card");
+  const cardId = card ? card.dataset.id : null;
+  switch (act) {
+    case "toggle-view": view = view === "board" ? "focus" : "board"; render(); break;
+    case "add-course": {
+      const name = prompt("Course name:");
+      if (!name || !name.trim()) break;
+      state.courses.push({ id: uid(), name: name.trim(), color: PALETTE[state.courses.length % PALETTE.length] });
+      save(); render(); break;
+    }
+    case "rename-course": {
+      const c = course(id); if (!c) break;
+      const name = prompt("Rename course:", c.name);
+      if (name && name.trim()) { c.name = name.trim(); save(); render(); }
+      break;
+    }
+    case "del-course": {
+      const c = course(id); if (!c || !confirm(`Delete "${c.name}" and all its assignments?`)) break;
+      state.courses = state.courses.filter(x => x.id !== c.id);
+      state.assignments = state.assignments.filter(a => a.courseId !== c.id);
+      save(); render(); break;
+    }
+    case "add-assignment": openDialog(null, id); break;
+    case "edit": openDialog(cardId); break;
+    case "del": {
+      const a = state.assignments.find(x => x.id === cardId);
+      if (a && confirm(`Delete "${a.title}"?`)) { state.assignments = state.assignments.filter(x => x.id !== a.id); save(); render(); }
+      break;
+    }
+    case "cycle-status": {
+      const a = state.assignments.find(x => x.id === btn.closest(".card").dataset.id);
+      if (!a) break;
+      const order = ["todo", "progress", "submitted", "graded"];
+      if (a.status === "progress") { markSubmitted(a); break; }
+      if (a.status === "submitted") {
+        const pct = prompt("Score earned (% of the assignment):", a.gradePct ?? "");
+        if (pct === null) break;
+        a.status = "graded"; a.gradePct = pct === "" ? null : parseFloat(pct) || 0;
+        save(); render(); break;
+      }
+      a.status = order[(order.indexOf(a.status) + 1) % order.length];
+      save(); render(); break;
+    }
+    case "sample": loadSample(); break;
+    case "ck-del": { state.checklist = state.checklist.filter(i => i.id !== id); save(); render(); break; }
+    case "summary": exportSummary(); break;
+    case "backup": exportBackup(); break;
+    case "import": document.getElementById("importFile").click(); break;
+    case "wipe": {
+      if (!confirm("Reset the board to empty? All locally stored data will be cleared.")) break;
+      state = blank(); try { localStorage.removeItem(KEY); } catch (_) {}
+      render(); break;
+    }
+  }
+}
+
+document.getElementById("ckForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const text = document.getElementById("ckText").value.trim();
+  if (!text) return;
+  state.checklist.push({ id: uid(), courseId: document.getElementById("ckCourse").value, text, done: false });
+  document.getElementById("ckText").value = "";
+  save(); render();
+});
+
+document.getElementById("ckList").addEventListener("change", e => {
+  if (!e.target.dataset.ck) return;
+  const it = state.checklist.find(x => x.id === e.target.dataset.ck);
+  if (it) { it.done = e.target.checked; save(); render(); }
+});
+
+document.getElementById("termStart").addEventListener("change", e => { state.termStart = e.target.value; save(); render(); });
+document.getElementById("termEnd").addEventListener("change", e => { state.termEnd = e.target.value; save(); render(); });
+
+function download(name, mime, text){
+  const blob = new Blob([text], { type: mime });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+}
+
+function summaryText(){
+  const nowMs = Date.now();
+  const lines = ["# Course Deadline Board — End-of-Term Summary", "", "Generated: " + new Date().toLocaleString(), ""];
+  if (state.termStart && state.termEnd) {
+    const s = Date.parse(state.termStart + "T00:00"), e = Date.parse(state.termEnd + "T23:59");
+    lines.push(`Term window: ${state.termStart} to ${state.termEnd} (${(CORE.clamp01((nowMs - s) / (e - s)) * 100).toFixed(0)}% elapsed)`, "");
+  }
+  const done = a => CORE.DONE.includes(a.status);
+  let gTotal = 0, gLate = 0, gGrace = 0;
+  for (const c of state.courses){
+    const items = state.assignments.filter(a => a.courseId === c.id);
+    if (!items.length) { lines.push(`## ${c.name}`, "", "No assignments tracked yet.", ""); continue; }
+    const wSum = CORE.sumWeights(items);
+    const doneItems = items.filter(done);
+    const doneW = CORE.sumWeights(doneItems);
+    const earned = CORE.weightedScore(doneItems.map(x => ({ weight: x.weight, pct: x.gradePct })));
+    const lateN = items.filter(a => CORE.isLate(a, nowMs)).length;
+    const graceN = items.filter(a => a.grace).length;
+    gTotal += doneItems.length; gLate += lateN; gGrace += graceN;
+    lines.push(`## ${c.name}`, "",
+      `- Assignments tracked: ${items.length} (weights logged: ${wSum.toFixed(1)}% of course grade)`,
+      `- Submitted or graded: ${doneItems.length} (${doneW.toFixed(1)}% weight credit earned so far)`,
+      earned != null ? `- Weighted score on graded work: ${earned.toFixed(1)}%` : "- No scored/graded work recorded yet",
+      `- Late items: ${lateN} · Items with grace flag: ${graceN}`,
+      `- Untracked weight: ${(100 - wSum).toFixed(1)}% — confirm the syllabus covers the rest`,
+      "");
+  }
+  if (!state.courses.length) lines.push("## Overview", "", "No courses tracked yet.", "");
+  const focus = CORE.focusWindow(state.assignments, nowMs, 14);
+  lines.push("## Snapshot", "",
+    `- Overdue or due within 2 weeks: ${focus.length}`,
+    `- Across all courses: ${gTotal} submitted/graded, ${gLate} late, ${gGrace} with grace`,
+    `- Checklist: ${state.checklist.filter(i => i.done).length}/${state.checklist.length} syllabus touch-up items complete`, "");
+  return lines.join("\n");
+}
+
+function exportSummary(){ download("term-summary.md", "text/markdown", summaryText()); }
+function exportBackup(){ download("course-deadline-board-backup.json", "application/json", JSON.stringify(state, null, 2)); }
+
+document.getElementById("importFile").addEventListener("change", e => {
+  const f = e.target.files[0];
+  e.target.value = "";
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const s = JSON.parse(r.result);
+      if (!s || !Array.isArray(s.courses) || !Array.isArray(s.assignments)) throw new Error("Unexpected shape");
+      if (!confirm("This replaces the data currently on the board. Continue?")) return;
+      state = s; if (!Array.isArray(state.checklist)) state.checklist = [];
+      save(); render();
+    } catch (err) { alert("Import failed: " + err.message); }
+  };
+  r.readAsText(f);
+});
+
+load();
+render();
+setInterval(() => { if (view === "board") renderBoard(); else renderFocus(); }, 60 * 1000);
+</script>
+</body>
+</html>

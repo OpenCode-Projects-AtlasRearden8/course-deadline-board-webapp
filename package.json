@@ -1,0 +1,10 @@
+{
+  "name": "course-deadline-board-webapp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Semester deadline board: courses as columns, weighted assignment cards, late/grace chips, next-two-weeks focus, syllabus checklist, and end-of-term summary. Single-file, local-first, zero dependencies.",
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "license": "MIT"
+}
